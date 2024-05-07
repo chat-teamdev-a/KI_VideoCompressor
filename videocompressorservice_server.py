@@ -68,6 +68,8 @@ class Server:
                 data += chunk
 
             # データを解析して処理
+            # stage2の要件のmediatype, payloadの使い方がわからない
+
             json_size = int.from_bytes(data[:16], byteorder='big')
             # media_type_size = int.from_bytes(data[16:17], byteorder='big')
             json_str = data[17:17+json_size].decode()
@@ -94,16 +96,29 @@ class Server:
             with open(output_file, "rb") as f:
                 data = f.read()
                 conn.sendall(data)
-        except Exception as e: #エラー処理jsonを送信
+
+        except FileNotFoundError as e:
+            error_data = {
+                "error_code": 404,
+                "description": "File not found error.",
+                "solution": "Please check the file path and try again."
+            }
+            self.send_error(conn, error_data)
+            print(f"File not found error: {e}")
+        except Exception as e:
             error_data = {
                 "error_code": 500,
-                "description": "An error occurred while processing the request.",
-                "solution": "Please check the request parameters and try again."
+                "description": "An unexpected error occurred.",
+                "solution": "Please try again later."
             }
-            error_json = json.dumps(error_data)
-            header = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-            conn.sendall(header)
-            conn.sendall(error_json.encode())
+            self.send_error(conn, error_data)
+            print(f"Unexpected error occurred: {e}")
+
+    def send_error(self, conn, error_data):
+        error_json = json.dumps(error_data)
+        conn.sendall(error_json.encode())
+
+        
 
     def process_video(self, method, input_file, output_file):
         if method == 'compress':
