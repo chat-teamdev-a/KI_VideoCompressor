@@ -6,11 +6,11 @@ class VideoProcessor: #動画を変更するクラス
     def __init__(self):
         pass
 
-    def compress_video(self, input_file, output_file, bitrate='1000k'):# 圧縮する関数
+    def compress_video(self, input_file, output_file, bitrate='500k'):# 圧縮する関数
         (
             ffmpeg
             .input(input_file)
-            .output(output_file, bitrate=bitrate)
+            .output(output_file, b=bitrate)
             .run()
         )
 
@@ -22,11 +22,11 @@ class VideoProcessor: #動画を変更するクラス
             .run()
         )
 
-    def change_aspect_ratio(self, input_file, output_file, aspect_ratio='2:1'): # アスペクト比を変更する関数
+    def change_aspect_ratio(self, input_file, output_file, aspect_ratio='1:1'): # アスペクト比を変更する関数
         (
             ffmpeg
             .input(input_file)
-            .output(output_file, vf=f"setsar={aspect_ratio}")
+            .output(output_file, vf=f"scale=640:640,setsar={aspect_ratio}")
             .run()
         )
 
@@ -97,6 +97,7 @@ class Server:
                 data = f.read()
                 conn.sendall(data)
 
+        #FileがないときにFileNotFoundErrorをしたいができないExceptionの方に行く
         except FileNotFoundError as e:
             error_data = {
                 "error_code": 404,
@@ -105,6 +106,7 @@ class Server:
             }
             self.send_error(conn, error_data)
             print(f"File not found error: {e}")
+
         except Exception as e:
             error_data = {
                 "error_code": 500,
@@ -138,7 +140,7 @@ class Server:
             s.listen(1)
             print("Server is listening...")
             while True:
-                conn, addr = s.accept()
+                conn, addr = s.accept() #conn:socketのオブジェクト addr:アドレス
                 with conn:
                     print(f"Connected by {addr}")
                     self.handle_client(conn)
