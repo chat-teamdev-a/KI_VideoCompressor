@@ -1,7 +1,6 @@
 import socket
 import ffmpeg
 import json
-import os
 
 class VideoProcessor: #動画を変更するクラス
     def __init__(self):
@@ -53,10 +52,6 @@ class Server:
         self.port = port
         self.processor = VideoProcessor()
 
-    def send_error(self, conn, error_data):
-        error_json = json.dumps(error_data)
-        conn.sendall(error_json.encode())
-        
     def handle_client(self, conn):
         try:
             header_size = 64
@@ -64,25 +59,24 @@ class Server:
             if not header:
                 return
             
-            # headerの解析部分 parse_headerで辞書を返してもらう
-            header_info = self.parse_header(header)
-            json_size = header_info["json_size"]
-            media_type_size = header_info["media_type_size"]
-            payload_size = header_info["payload_size"]
-
+            data_size = int.from_bytes(header, byteorder='big')
             data = b""
-            while len(data) < payload_size:
+            while len(data) < data_size:
                 chunk = conn.recv(1024)
                 if not chunk:
                     break
                 data += chunk
 
-            #fileがないとき
-            if not os.path.exists(file_name):
-                raise FileNotFoundError("File not found")
-
             # データを解析して処理
-            json_str = data[:json_size].decode()
+            # stage2の要件のmediatype, payloadの使い方がわからない
+
+            json_size = int.from_bytes(data[:16], byteorder='big')
+            # media_type_size = int.from_bytes(data[16:17], byteorder='big')
+            json_str = data[17:17+json_size].decode()
+            # media_type = data[17+json_size:17+json_size+media_type_size].decode() #メディアタイプ
+            # payload_size = int.from_bytes(data[17+json_size+media_type_size:], byteorder='big')
+
+
             json_data = json.loads(json_str)
             command_number = json_data["command_number"]
             file_name = json_data["file_name"]
@@ -121,18 +115,12 @@ class Server:
             }
             self.send_error(conn, error_data)
             print(f"Unexpected error occurred: {e}")
-    
 
-    @staticmethod
-    def parse_header(header: bytes) -> dict: # 64バイトheaderを辞書型で返す
-        json_size = int.from_bytes(header[:16], byteorder='big') # 最初の16バイト
-        media_type_size = int(header[16]) # 次の1バイト
-        payload_size = int.from_bytes(header[17:64], byteorder='big') # 残り47バイト
-        return {
-            "json_size": json_size,
-            "media_type_size": media_type_size,
-            "payload_size": payload_size
-        }
+    def send_error(self, conn, error_data):
+        error_json = json.dumps(error_data)
+        conn.sendall(error_json.encode())
+
+        
 
     def process_video(self, method, input_file, output_file):
         if method == 'compress':
@@ -157,8 +145,6 @@ class Server:
                     print(f"Connected by {addr}")
                     self.handle_client(conn)
 
-    
-
 if __name__ == "__main__":
-    server = Server("localhost", 9050)
+    server = Server("localhost", 9001)
     server.start()
