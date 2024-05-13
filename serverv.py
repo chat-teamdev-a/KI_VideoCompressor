@@ -1,6 +1,7 @@
 import socket
 import ffmpeg
 import json
+import os
 
 class VideoProcessor: #動画を変更するクラス
     def __init__(self):
@@ -52,6 +53,10 @@ class Server:
         self.port = port
         self.processor = VideoProcessor()
 
+    def send_error(self, conn, error_data):
+        error_json = json.dumps(error_data)
+        conn.sendall(error_json.encode())
+        
     def handle_client(self, conn):
         try:
             header_size = 64
@@ -71,6 +76,10 @@ class Server:
                 if not chunk:
                     break
                 data += chunk
+
+            #fileがないとき
+            if not os.path.exists(file_name):
+                raise FileNotFoundError("File not found")
 
             # データを解析して処理
             json_str = data[:json_size].decode()
@@ -113,9 +122,6 @@ class Server:
             self.send_error(conn, error_data)
             print(f"Unexpected error occurred: {e}")
     
-    def send_error(self, conn, error_data):
-        error_json = json.dumps(error_data)
-        conn.sendall(error_json.encode())
 
     @staticmethod
     def parse_header(header: bytes) -> dict: # 64バイトheaderを辞書型で返す
