@@ -97,7 +97,6 @@ class Server:
                 data = f.read()
                 conn.sendall(data)
 
-        #FileがないときにFileNotFoundErrorをしたいができないExceptionの方に行く
         except FileNotFoundError as e:
             error_data = {
                 "error_code": 404,
@@ -123,16 +122,32 @@ class Server:
         
 
     def process_video(self, method, input_file, output_file):
-        if method == 'compress':
-            self.processor.compress_video(input_file, output_file)
-        elif method == 'change_resolution':
-            self.processor.change_resolution(input_file, output_file)
-        elif method == 'change_aspect_ratio':
-            self.processor.change_aspect_ratio(input_file, output_file)
-        elif method == 'convert_to_audio':
-            self.processor.convert_to_audio(input_file, output_file)
-        elif method == 'convert_to_gif':
-            self.processor.convert_to_gif(input_file, output_file, start_time=10, duration=5)
+        try:
+            if method == 'compress':
+                self.processor.compress_video(input_file, output_file)
+            elif method == 'change_resolution':
+                self.processor.change_resolution(input_file, output_file)
+            elif method == 'change_aspect_ratio':
+                self.processor.change_aspect_ratio(input_file, output_file)
+            elif method == 'convert_to_audio':
+                self.processor.convert_to_audio(input_file, output_file)
+            elif method == 'convert_to_gif':
+                self.processor.convert_to_gif(input_file, output_file, start_time=10, duration=5)
+        except FileNotFoundError as e:
+            error_data = {
+                "error_code": 404,
+                "description": "File not found error.",
+                "solution": "Please check the file path and try again."
+            }
+            return error_data  # ファイルが見つからない場合はエラー情報を返す
+        except Exception as e:
+            error_data = {
+                "error_code": 500,
+                "description": "An unexpected error occurred.",
+                "solution": "Please try again later."
+            }
+            return error_data  # その他の予期しないエラーの場合もエラー情報を返す
+
 
     def start(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
