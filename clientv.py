@@ -2,20 +2,27 @@ import socket
 import json
 
 def mmp(command_number, file_name, output_file):
+    # JSONデータを構築
     json_data = {
-        "command_number": command_number,
+        "command_number": str(command_number),
         "file_name": file_name,
         "output_file": output_file
     }
-    json_str = json.dumps(json_data)  # 辞書からJSONに変更
+    json_str = json.dumps(json_data)  # 辞書からJSONに変換
+
+    # メディアデータを読み込み
+    with open(file_name, "rb") as f:
+        media_data = f.read()
+
+    # 各データのサイズを計算
     json_size = len(json_str).to_bytes(16, byteorder='big')
+    json_size_padded = json_size.ljust(16, b'\x00')  # JSONサイズを16バイトにパディング
     media_type = b'mp4'  # 実際のメディアタイプを設定
     media_type_size = len(media_type).to_bytes(1, byteorder='big')
-    payload = b'Your media data here'  # 実際のメディアデータを設定
-    payload_size = len(payload).to_bytes(47, byteorder='big')
+    payload_size = len(media_data).to_bytes(47, byteorder='big')
 
-    return json_size + media_type_size + json_str.encode() + media_type + payload_size + payload
-
+    # データを結合して返す
+    return json_size_padded + media_type_size + json_str.encode() + media_type + payload_size + media_data
 
 def send_request(command_number, file_name, output_file, address, port):
     request = mmp(command_number, file_name, output_file)
@@ -33,12 +40,11 @@ def send_request(command_number, file_name, output_file, address, port):
             error_data = json.loads(data)
             print(f"Error code: {error_data['error_code']}")
             print(f"An error occurred: {error_data['description']}")
-            print(f"solution: {error_data['solution']}")
+            print(f"Solution: {error_data['solution']}")
         else:
             with open(output_file, "wb") as f:
                 f.write(data)
             print(f"Video processed and downloaded successfully as {output_file}.")
-
 
 if __name__ == "__main__":
     command_number = input("Enter the command number (1: Compress, 2: Change resolution, 3: Change the video aspect ratio, 4: Convert video to audio, 5: Create GIFs): ")
